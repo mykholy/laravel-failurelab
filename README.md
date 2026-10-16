@@ -9,10 +9,12 @@
   <a href="https://github.com/mykholy/laravel-failurelab/actions/workflows/tests.yml"><img alt="Standalone CI" src="https://github.com/mykholy/laravel-failurelab/actions/workflows/tests.yml/badge.svg"></a>
   <img alt="PHP 8.3+" src="https://img.shields.io/badge/PHP-8.3%2B-777BB4">
   <img alt="Laravel 12 or 13" src="https://img.shields.io/badge/Laravel-12%20%7C%2013-FF2D20">
+  <a href="https://packagist.org/packages/mykholy/laravel-failurelab"><img alt="Packagist stable" src="https://img.shields.io/packagist/v/mykholy/laravel-failurelab"></a>
+  <a href="https://packagist.org/packages/mykholy/laravel-failurelab"><img alt="Packagist downloads" src="https://img.shields.io/packagist/dt/mykholy/laravel-failurelab"></a>
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-green"></a>
 </p>
 
-> **Stable release: [v1.1.0](https://github.com/mykholy/laravel-failurelab/releases/tag/v1.1.0)** — GitHub tag published and independently installed in clean Laravel 12/13 applications. Packagist registration is separate and must be verified before claiming one-command registry installation.
+> **Latest verified stable release: [v1.1.0](https://github.com/mykholy/laravel-failurelab/releases/tag/v1.1.0).** Published on [Packagist](https://packagist.org/packages/mykholy/laravel-failurelab) with the same immutable source commit `dd39fcdea2fe4404f41dc216f1eb39b7247ad7c8`; fresh Laravel 12/13 consumers installed that exact version without VCS/path overrides. [See verification](docs/RELEASE.md).
 
 A payment provider accepts a charge, but your application throws before saving the result. A webhook arrives three times. How do you prove your code won't create the local effect twice?
 
@@ -148,7 +150,7 @@ For edge cases, see [Limitations & threat model](docs/SAFETY.md), [Design decisi
 
 ## Release and distribution
 
-The canonical source and CI live in this repository. Version 1.0.0 is available through [GitHub Releases](https://github.com/mykholy/laravel-failurelab/releases) and installable via [Packagist](https://packagist.org/packages/mykholy/laravel-failurelab). CI also verifies clean registry-based consumer installation.
+The canonical source and CI live in this repository. **v1.1.0** is published on [GitHub Releases](https://github.com/mykholy/laravel-failurelab/releases/tag/v1.1.0) and [Packagist](https://packagist.org/packages/mykholy/laravel-failurelab), with exact-source verification and clean registry-based consumer installation. For future versions, see the [maintainer release procedure](docs/RELEASE.md#future-stable-release-process).
 
 ### New: the handler committed, but the acknowledgement was lost
 
@@ -209,6 +211,6 @@ A `FailureLabManager` is available from Laravel's service container for dependen
 
 ## Project status
 
-**v1.1.0 — stable GitHub release**, with passing Laravel 12/13 tagged Composer consumer tests. FailureLab remains a test-only library: it does not simulate real process termination, concurrent workers, or distributed exactly-once delivery. [Release verification](docs/RELEASE.md) documents what was tested and what remains for Packagist.
+**v1.1.0 — stable on GitHub and Packagist**, with matching immutable source and verified independent Composer installs on Laravel 12 and 13. FailureLab remains a test-only library: it does not simulate real process termination, concurrent workers, or distributed exactly-once delivery. [Release verification](docs/RELEASE.md) covers the exact evidence and limits.
 
 MIT licensed. Contributions welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Maintained by [@mykholy](https://github.com/mykholy).
