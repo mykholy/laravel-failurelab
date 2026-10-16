@@ -153,6 +153,33 @@ For edge cases, see [Limitations & threat model](docs/SAFETY.md), [Design decisi
 
 The canonical source and CI are maintained in this repository. Check [GitHub Releases](https://github.com/mykholy/laravel-failurelab/releases) for actual tags and [Packagist](https://packagist.org/packages/mykholy/laravel-failurelab) for package discovery. Do not assume a version has been published merely because its Composer package name is declared.
 
+### New: the handler committed, but the acknowledgement was lost
+
+Available in the **next 1.1 release** (not in v1.0.0). A webhook handler can finish and
+commit successfully, while a caller still retries because its acknowledgement was
+lost. Model this explicitly, without throwing inside a successful handler:
+
+```php
+$report = FailureLab::replay('ack lost after webhook committed')
+    ->times(3) // explicit simulated redelivery count; never automatic network retry
+    ->loseAcknowledgementOn(1)
+    ->run(fn () => $webhookHandler->handle($sameVerifiedEvent));
+
+$report->assertDeliveries(3)
+    ->assertAllCompleted() // each handler invocation returned successfully
+    ->assertAcknowledgementPlanSatisfied()
+    ->assertAcknowledgementLostOn(1)
+    ->assertAcknowledgedAfterLoss()
+    ->assertInvariant('one ledger entry', fn (): bool => DB::table('ledger_entries')->count() === 1);
+```
+
+Unlike `continueAfterFailure()`, this records **successful application execution**
+with **simulated lost acknowledgement**. No network packet is dropped, no queue is
+started, and no new delivery is scheduled automatically. The caller explicitly
+sets `times()`. The report distinguishes attempted loss from actual loss,
+so a callback that throws first cannot silently satisfy the loss plan.
+The handler is responsible for idempotency and real database integrity.
+
 ## Developer workflow
 
 ```bash
@@ -177,6 +204,9 @@ Standalone GitHub Actions validates PHP 8.3–8.5, Laravel 12/13, PHPStan, Pint,
 | `->assertCheckpointHit(string, int)` | Assert exact checkpoint count |
 | `->assertCompleted()` / `->value()` | Check success and inspect returned value |
 | `FailureLab::replay(...)->times(int)->run(callable)` | Run bounded sequential duplicate deliveries |
+| `->loseAcknowledgementOn(int)` | Model acknowledgement lost **after successful handler** (v1.1) |
+| `->assertAcknowledgementPlanSatisfied()` | Verify configured loss occurred after a completed callback (v1.1) |
+| `->assertAcknowledgedAfterLoss()` | Require a later successful acknowledged delivery (v1.1) |
 
 A `FailureLabManager` is available from Laravel's service container for dependency-injected tests; the static entry point needs no bootstrapping.
 

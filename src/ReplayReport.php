@@ -11,8 +11,17 @@ final readonly class ReplayReport
 {
     use AssertsRecoveryInvariants;
 
-    /** @param list<Attempt> $deliveries */
-    public function __construct(public string $name, public array $deliveries) {}
+    /**
+     * @param  list<Attempt>  $deliveries
+     * @param  list<int>  $scheduledAcknowledgementLosses
+     * @param  list<int>  $lostAcknowledgements
+     */
+    public function __construct(
+        public string $name,
+        public array $deliveries,
+        public array $scheduledAcknowledgementLosses = [],
+        public array $lostAcknowledgements = [],
+    ) {}
 
     public function assertDeliveries(int $expected): self
     {
@@ -69,6 +78,62 @@ final readonly class ReplayReport
 
         throw new ExpectationFailed(
             "Replay [{$this->name}] has no completed handler delivery following a failed delivery."
+        );
+    }
+
+    /** Confirm the planned loss actually followed a completed handler invocation. */
+    public function assertAcknowledgementPlanSatisfied(): self
+    {
+        if ($this->scheduledAcknowledgementLosses === []) {
+            throw new ExpectationFailed("Replay [{$this->name}] has no acknowledgement losses to verify.");
+        }
+
+        $missing = array_diff($this->scheduledAcknowledgementLosses, $this->lostAcknowledgements);
+
+        if ($missing !== []) {
+            throw new ExpectationFailed(
+                "Replay [{$this->name}] did not reach planned acknowledgement loss on delivery "
+                .implode(', ', $missing).'.'
+            );
+        }
+
+        return $this;
+    }
+
+    /** Check exactly which completed handler invocation lost its simulated acknowledgement. */
+    public function assertAcknowledgementLostOn(int $delivery): self
+    {
+        if (! in_array($delivery, $this->lostAcknowledgements, true)) {
+            throw new ExpectationFailed(
+                "Replay [{$this->name}] did not lose an acknowledgement on delivery {$delivery}."
+            );
+        }
+
+        return $this;
+    }
+
+    /**
+     * A later handler completed with an acknowledgement after a simulated loss.
+     * This says nothing about external side effects: assert those separately.
+     */
+    public function assertAcknowledgedAfterLoss(): self
+    {
+        $lostEarlier = false;
+
+        foreach ($this->deliveries as $delivery) {
+            if (in_array($delivery->number, $this->lostAcknowledgements, true)) {
+                $lostEarlier = true;
+
+                continue;
+            }
+
+            if ($lostEarlier && $delivery->status === 'completed') {
+                return $this;
+            }
+        }
+
+        throw new ExpectationFailed(
+            "Replay [{$this->name}] has no acknowledged completed handler after acknowledgement loss."
         );
     }
 

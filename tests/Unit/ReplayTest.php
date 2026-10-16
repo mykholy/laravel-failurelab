@@ -124,6 +124,133 @@ final class ReplayTest extends TestCase
         FailureLab::replay("report\u{202E}spoof");
     }
 
+
+    public function test_acknowledgement_loss_records_completed_handler_then_later_acknowledgement(): void
+    {
+        $handlerCalls = 0;
+        $effects = 0;
+
+        $report = FailureLab::replay('acknowledgement disappeared after commit')
+            ->times(3)
+            ->loseAcknowledgementOn(1)
+            ->run(static function (int $delivery) use (&$handlerCalls, &$effects): string {
+                $handlerCalls++;
+                // Fake application deduplicates the event on its own.
+                $effects = 1;
+
+                return 'handled-'.$delivery;
+            });
+
+        self::assertSame(3, $handlerCalls);
+        self::assertSame(1, $effects);
+        self::assertSame([1], $report->lostAcknowledgements);
+        $report->assertDeliveries(3)
+            ->assertAllCompleted()
+            ->assertFailedDeliveries(0)
+            ->assertAcknowledgementPlanSatisfied()
+            ->assertAcknowledgementLostOn(1)
+            ->assertAcknowledgedAfterLoss()
+            ->assertInvariant('one effect after duplicate delivery', static fn (): bool => $effects === 1);
+        self::assertSame('handled-1', $report->deliveries[0]->value);
+    }
+
+    public function test_acknowledgement_loss_does_not_mutate_replay_builder_or_default_report(): void
+    {
+        $base = FailureLab::replay('no loss by default')->times(2);
+        $altered = $base->loseAcknowledgementOn(1);
+
+        self::assertNotSame($base, $altered);
+        self::assertSame([], $base->run(static fn (): bool => true)->lostAcknowledgements);
+        self::assertSame([1], $altered->run(static fn (): bool => true)->lostAcknowledgements);
+    }
+
+    public function test_handler_failure_does_not_falsely_satisfy_acknowledgement_plan(): void
+    {
+        $report = FailureLab::replay('handler failed before its acknowledgement')
+            ->times(2)
+            ->loseAcknowledgementOn(1)
+            ->continueAfterFailure()
+            ->run(static fn (int $n): bool => $n === 1
+                ? throw new RuntimeException('private webhook exception payload')
+                : true);
+
+        self::assertSame([], $report->lostAcknowledgements);
+        $report->assertFailedDeliveries(1);
+
+        $this->expectException(ExpectationFailed::class);
+        $this->expectExceptionMessage('did not reach planned acknowledgement loss');
+        $report->assertAcknowledgementPlanSatisfied();
+    }
+
+    public function test_last_delivery_loss_is_not_mistaken_for_recovered_acknowledgement(): void
+    {
+        $report = FailureLab::replay('no later acknowledgement')
+            ->times(2)
+            ->loseAcknowledgementOn(2)
+            ->run(static fn (): bool => true);
+
+        $report->assertAcknowledgementPlanSatisfied()->assertAcknowledgementLostOn(2);
+
+        $this->expectException(ExpectationFailed::class);
+        $report->assertAcknowledgedAfterLoss();
+    }
+
+    public function test_unplanned_acknowledgement_loss_does_not_pass_verification(): void
+    {
+        $report = FailureLab::replay('no scheduled acknowledgement losses')
+            ->times(2)->run(static fn (): bool => true);
+        self::assertSame([], $report->lostAcknowledgements);
+
+        $this->expectException(ExpectationFailed::class);
+        $report->assertAcknowledgementPlanSatisfied();
+    }
+
+    public function test_replay_rejects_duplicate_acknowledgement_loss_deliveries(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        FailureLab::replay('duplicate loss')->loseAcknowledgementOn(1)->loseAcknowledgementOn(1);
+    }
+
+    public function test_replay_rejects_acknowledgement_loss_after_bounded_deliveries(): void
+    {
+        $ran = false;
+        $scenario = FailureLab::replay('out of range')
+            ->loseAcknowledgementOn(3)
+            ->times(2);
+
+        try {
+            $scenario->run(static function () use (&$ran): void {
+                $ran = true;
+            });
+
+            self::fail('Expected planned loss outside delivery bound to throw.');
+        } catch (InvalidArgumentException $e) {
+            self::assertStringContainsString('exceeds configured replay count', $e->getMessage());
+            self::assertFalse($ran);
+        }
+    }
+
+    public function test_replay_rejects_zero_acknowledgement_loss_index(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        FailureLab::replay('invalid loss')->loseAcknowledgementOn(0);
+    }
+
+    public function test_acknowledged_recovery_requires_a_later_acknowledged_success(): void
+    {
+        $report = FailureLab::replay('all acknowledgements lost')
+            ->times(2)
+            ->loseAcknowledgementOn(1)
+            ->loseAcknowledgementOn(2)
+            ->run(static fn (): bool => true);
+
+        $report->assertAcknowledgementPlanSatisfied();
+        self::assertSame([1, 2], $report->lostAcknowledgements);
+
+        $this->expectException(ExpectationFailed::class);
+        $report->assertAcknowledgedAfterLoss();
+    }
+
     public function test_invalid_delivery_counts_fail_early(): void
     {
         $this->expectException(InvalidArgumentException::class);

@@ -109,6 +109,31 @@ final class DatabaseBoundaryTest extends TestCase
         self::assertSame(1, DB::table('failurelab_effects')->count());
     }
 
+
+    public function test_lost_acknowledgement_after_commit_keeps_a_single_ledger_effect(): void
+    {
+        $report = FailureLab::replay('committed webhook then acknowledgement lost')
+            ->times(3)
+            ->loseAcknowledgementOn(1)
+            ->run(static function (): void {
+                DB::transaction(static function (): void {
+                    if (DB::table('failurelab_events')->insertOrIgnore(['event_id' => 'ack-lost-evt']) === 1) {
+                        DB::table('failurelab_effects')->insert(['event_id' => 'ack-lost-evt']);
+                    }
+                });
+            });
+
+        $report->assertDeliveries(3)
+            ->assertAllCompleted()
+            ->assertAcknowledgementPlanSatisfied()
+            ->assertAcknowledgedAfterLoss()
+            ->assertInvariant('exactly one event', static fn (): bool => DB::table('failurelab_events')->count() === 1)
+            ->assertInvariant('exactly one committed effect', static fn (): bool => DB::table('failurelab_effects')->count() === 1);
+
+        self::assertSame([1], $report->lostAcknowledgements);
+        self::assertSame(1, DB::table('failurelab_effects')->count());
+    }
+
     public function test_sequential_webhook_redelivery_recovers_after_transaction_rollback(): void
     {
         $report = FailureLab::replay('database rollback and two repeated deliveries')

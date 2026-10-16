@@ -2,6 +2,15 @@
 
 All notable changes will be documented here after the first public tag.
 
+## Unreleased (planned 1.1.0)
+
+### Added
+
+- Explicit, deterministic `Replay::loseAcknowledgementOn(int)` for an application callback that completed but whose simulated acknowledgement is lost.
+- `ReplayReport::assertAcknowledgementPlanSatisfied()`, `assertAcknowledgementLostOn()`, and `assertAcknowledgedAfterLoss()` to reject skipped losses and false-positive recovery.
+- Real SQLite/MySQL/PostgreSQL ledger-idempotency integration fixture and regression tests for handler failure, missing acknowledgement, bounds, duplicate scheduling, and immutable builders.
+- Backward-compatible report constructor defaults; the existing `summary()` schema remains unchanged for v1.0 consumers.
+
 ## [1.0.0] - 2026-10-16
 
 ### Added

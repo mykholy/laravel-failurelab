@@ -37,3 +37,13 @@ Execution requires **PHP CLI** and exactly `APP_ENV=testing`; this is a defense 
 ## Injected-failure authenticity
 
 A callback may catch the injected exception itself. Such a swallowed interruption **does not** prove recovery: only a checkpoint-issued exception that escapes into the runner counts toward `assertFaultPlanSatisfied()`. An application that throws its own `InjectedFailure` instance is treated as an ordinary failed attempt, never as a retry trigger. This prevents a false-green fault plan when a handler refactor suppresses the test failure or fabricates the same public exception type.
+
+
+## Lost acknowledgement is not a network simulator
+
+`Replay::loseAcknowledgementOn()` only marks the acknowledgement of a
+**successfully completed** handler as not observed by the caller. It does not
+modify transport acknowledgements, broker offsets, process state or HTTP
+responses, and does not cause automatic redelivery. The application under test
+must own the idempotency key and effect deduplication. Explicitly assert the
+planned loss, a later acknowledged callback, and an application-level invariant.
