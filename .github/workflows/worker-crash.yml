@@ -1,0 +1,41 @@
+name: Linux worker SIGKILL recovery drill
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-queue-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        laravel: ['12', '13']
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: mbstring, dom, pdo_sqlite, sqlite3
+          tools: composer:v2
+      - name: Create disposable Laravel host
+        run: composer create-project laravel/laravel "$RUNNER_TEMP/crash-host" "^${{ matrix.laravel }}" --no-interaction --prefer-dist --no-progress
+      - name: Install FailureLab package into isolated host and stage worker fixture
+        run: |
+          cd "$RUNNER_TEMP/crash-host"
+          composer config repositories.failurelab "{\"type\":\"path\",\"url\":\"${GITHUB_WORKSPACE}\",\"options\":{\"symlink\":false}}"
+          composer require --dev 'mykholy/laravel-failurelab:@dev' --no-interaction --prefer-dist --no-progress
+          mkdir -p app/Jobs
+          cp "$GITHUB_WORKSPACE/tests/Process/FailureLabCrashJob.php" app/Jobs/FailureLabCrashJob.php
+      - name: Kill a real owned queue worker after a committed SQLite ledger effect and recover
+        working-directory: ${{ runner.temp }}/crash-host
+        env:
+          APP_ENV: testing
+        run: php "$GITHUB_WORKSPACE/tests/Process/queue-recovery.php"
