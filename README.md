@@ -12,7 +12,7 @@
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-green"></a>
 </p>
 
-> **Standalone repository source — stable release pending verification.** Installing via an untagged branch is suitable for evaluation, not production or a versioned release.
+> **Stable release: [v1.0.0](https://github.com/mykholy/laravel-failurelab/releases/tag/v1.0.0)** — GitHub tag published and independently installed in clean Laravel 12/13 applications. Packagist registration is separate and must be verified before claiming one-command registry installation.
 
 A payment provider accepts a charge, but your application throws before saving the result. A webhook arrives three times. How do you prove your code won't create the local effect twice?
 
@@ -41,13 +41,14 @@ Before verified Packagist publication, install from this Git repository in a dis
 
 ```bash
 composer config repositories.failurelab '{"type":"vcs","url":"https://github.com/mykholy/laravel-failurelab.git"}'
-composer require --dev mykholy/laravel-failurelab:dev-main
+composer require --dev mykholy/laravel-failurelab:^1.0
 ```
 
-After verified tagged Packagist publication, standard installation will be:
+Once the package is actually indexed by Packagist, remove the custom VCS repository configuration and use standard installation:
 
 ```bash
-composer require --dev mykholy/laravel-failurelab
+composer config --unset repositories.failurelab
+composer require --dev mykholy/laravel-failurelab:^1.0
 ```
 
 **Requirements:** PHP 8.3+, Laravel 12 or 13, PHPUnit/Pest in the host app. Keep this in `require-dev`. Set `APP_ENV=testing` in `phpunit.xml` and use a disposable test database. No migrations, middleware, queues, services, or network access are installed by FailureLab.
@@ -181,6 +182,6 @@ A `FailureLabManager` is available from Laravel's service container for dependen
 
 ## Project status
 
-**Standalone source / release candidate, not yet a verified stable package.** Real process termination, parallel worker behavior and distributed exactly-once delivery are intentionally not implemented. Check the [release checklist](docs/RELEASE.md) before installing a tagged version.
+**v1.0.0 — stable GitHub release**, with passing Laravel 12/13 tagged Composer consumer tests. FailureLab remains a test-only library: it does not simulate real process termination, concurrent workers, or distributed exactly-once delivery. [Release verification](docs/RELEASE.md) documents what was tested and what remains for Packagist.
 
 MIT licensed. Contributions welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Maintained by [@mykholy](https://github.com/mykholy).

@@ -1,4 +1,4 @@
-name: Verify versioned Composer installation
+name: Verify stable versioned Composer installation
 
 on:
   push:
@@ -29,7 +29,7 @@ jobs:
         working-directory: ${{ runner.temp }}/tagged-host
         run: |
           composer config repositories.failurelab '{"type":"vcs","url":"https://github.com/mykholy/laravel-failurelab.git"}'
-          composer require --dev 'mykholy/laravel-failurelab:v0.1.0-beta.1' --no-interaction --prefer-dist --no-progress
+          composer require --dev 'mykholy/laravel-failurelab:v1.0.0' --no-interaction --prefer-dist --no-progress
           composer show mykholy/laravel-failurelab
       - name: Verify independently installed, versioned recovery API
         working-directory: ${{ runner.temp }}/tagged-host
@@ -43,7 +43,7 @@ jobs:
           $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
           $manager = $app->make(\Mykholy\FailureLab\FailureLabManager::class);
-          $scenario = $manager->scenario('tagged beta from Composer VCS')
+          $scenario = $manager->scenario('tagged stable from Composer VCS')
               ->interruptOnceAt('provider.accepted')
               ->attempts(2)
               ->run(static function ($point, int $attempt): int {
@@ -58,6 +58,6 @@ jobs:
               ->times(2)->run(static fn (): bool => true);
           $replay->assertDeliveries(2)->assertAllCompleted();
 
-          echo "PASS: pinned v0.1.0-beta.1 in clean Laravel app\n";
+          echo "PASS: pinned v1.0.0 in clean Laravel app\n";
           PHP
           APP_ENV=testing php "$RUNNER_TEMP/check-tagged.php"
