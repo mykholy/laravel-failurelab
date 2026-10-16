@@ -4,6 +4,8 @@ All notable changes will be documented here after the first public tag.
 
 ## [1.1.0] - 2026-10-16
 
+GitHub release: https://github.com/mykholy/laravel-failurelab/releases/tag/v1.1.0
+
 ### Added
 
 - Explicit, deterministic `Replay::loseAcknowledgementOn(int)` for an application callback that completed but whose simulated acknowledgement is lost.

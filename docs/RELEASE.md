@@ -36,3 +36,18 @@ Evidence: [standalone CI](https://github.com/mykholy/laravel-failurelab/actions/
 ## Scope limitations
 
 This is a test-only **in-process exception/fault and sequential replay** harness. It does not kill workers, simulate real infrastructure failure, or guarantee exactly-once network/financial effects. Use fake providers and disposable DBs, even when `APP_ENV=testing`.
+
+
+## 1.1.0 release evidence
+
+- [x] Additive `loseAcknowledgementOn(int)` API with immutable builders and fail-closed assertions.
+- [x] Testbench/PHPUnit plus real SQLite/MySQL/PostgreSQL recovery fixture.
+- [x] Existing Laravel 12/13 / PHP 8.3–8.5 quality matrix and Composer audit passed.
+- [x] Published GitHub `v1.1.0` from exact source commit `dd39fcdea2fe4404f41dc216f1eb39b7247ad7c8`.
+- [x] Composer Git VCS installs of `v1.1.0` in clean Laravel 12 and 13 applications executed the new recovery assertions.
+
+Release: https://github.com/mykholy/laravel-failurelab/releases/tag/v1.1.0
+
+Evidence: https://github.com/mykholy/laravel-failurelab/actions/runs/38893786691
+
+The GitHub release and its tag are stable; successful Packagist registry indexing of the **new 1.1.0 version** is tested separately. No worker SIGKILL or real transport assertions are implied.

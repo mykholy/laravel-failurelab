@@ -1,0 +1,66 @@
+name: Verify v1.1.0 Packagist registry publication
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  registry-v1-1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        laravel: ['12', '13']
+    steps:
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: mbstring, dom, pdo_sqlite, sqlite3
+          tools: composer:v2
+      - name: Create a clean Laravel ${{ matrix.laravel }} consumer
+        run: composer create-project laravel/laravel "$RUNNER_TEMP/failurelab-registry" "^${{ matrix.laravel }}" --no-interaction --prefer-dist --no-progress
+      - name: Resolve exact v1.1.0 via Packagist only (no VCS or path repositories)
+        working-directory: ${{ runner.temp }}/failurelab-registry
+        run: |
+          php -r '$j=json_decode(file_get_contents("composer.json"), true); if (!empty($j["repositories"])) { fwrite(STDERR, "Unexpected repository override\n"); exit(1); }'
+          composer clear-cache
+          composer require --dev 'mykholy/laravel-failurelab:v1.1.0' --no-interaction --prefer-dist --no-progress
+          composer show mykholy/laravel-failurelab
+      - name: Run v1.1.0 acknowledgement-loss recovery from Packagist install
+        working-directory: ${{ runner.temp }}/failurelab-registry
+        run: |
+          cat > "$RUNNER_TEMP/verify-registry.php" <<'PHP'
+          <?php
+
+          declare(strict_types=1);
+
+          require getcwd().'/vendor/autoload.php';
+          $app = require getcwd().'/bootstrap/app.php';
+          $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+
+          $manager = $app->make(\Mykholy\FailureLab\FailureLabManager::class);
+          $sideEffects = 0;
+
+          $report = $manager->replay('registry lost acknowledgement')
+              ->times(3)
+              ->loseAcknowledgementOn(1)
+              ->run(static function () use (&$sideEffects): void {
+                  $sideEffects = 1;
+              });
+
+          $report->assertDeliveries(3)
+              ->assertAllCompleted()
+              ->assertAcknowledgementPlanSatisfied()
+              ->assertAcknowledgementLostOn(1)
+              ->assertAcknowledgedAfterLoss()
+              ->assertInvariant('exactly one effect', static fn (): bool => $sideEffects === 1);
+
+          echo "PASS: v1.1.0 Packagist install and auto-discovery\n";
+          PHP
+          APP_ENV=testing php "$RUNNER_TEMP/verify-registry.php"
