@@ -1,5 +1,23 @@
 # FailureLab release verification
 
+## Current stable release — v1.1.0 (2026-10-16)
+
+- **GitHub Release:** [v1.1.0](https://github.com/mykholy/laravel-failurelab/releases/tag/v1.1.0) (stable, not a prerelease).
+- **Packagist:** [mykholy/laravel-failurelab](https://packagist.org/packages/mykholy/laravel-failurelab), where v1.1.0 resolves to exactly `dd39fcdea2fe4404f41dc216f1eb39b7247ad7c8`, matching the GitHub tag.
+- **Public installation:** fresh Laravel 12 and 13 applications installed v1.1.0 **without path/VCS repository overrides**, exercised auto-discovery, bounded replay and acknowledgement-loss assertions.
+- **Verified main CI:** [standalone 14/14 jobs](https://github.com/mykholy/laravel-failurelab/actions/runs/38894477508), [VCS 2/2](https://github.com/mykholy/laravel-failurelab/actions/runs/38894477461), [Packagist consumers 2/2](https://github.com/mykholy/laravel-failurelab/actions/runs/38894477448), [versioned consumers 2/2](https://github.com/mykholy/laravel-failurelab/actions/runs/38894477386), [pinned v1.1.0 2/2](https://github.com/mykholy/laravel-failurelab/actions/runs/38894477359).
+- **Scope:** deterministic in-process test faults and bounded sequential redelivery only. No real process SIGKILL, network packet loss, concurrent worker schedule, independent production security certification or externally guaranteed exactly-once behavior.
+
+The documentation/CI changes merged *after* the v1.1.0 tag are maintained on `main`; they do not silently change the published artifact.
+
+## Future stable release process
+
+The maintainer initiates **Publish verified stable release** through GitHub Actions on `main`, supplying a **new** version such as `v1.1.1`, after updating `CHANGELOG.md`. The workflow must refuse to publish if the requested tag or release already exists, if `main` moved since the dispatch SHA, or if exact-source CI/consumer gates are missing or unsuccessful. It creates immutable GitHub release assets only for a reviewed source, then verifies Packagist indexing against the same SHA and installs the public release in Laravel 12/13. If Packagist or public installation fails, **investigate without retagging or moving the existing tag**.
+
+The package release is not a security certification. See [SAFETY.md](SAFETY.md); update this document and the changelog for each new release, and record any remaining adoption or host-specific checks.
+
+## Historical v1.0.0 evidence
+
 **GitHub status: v1.0.0 stable release published and tested.**
 **Packagist status: registered and v1.0.0 installed in fresh Laravel 12/13 consumers with no Composer repository overrides.**
 The stable tag is immutable: `252e7256bb488b1cefffe6d6b9842759c9227e22`.

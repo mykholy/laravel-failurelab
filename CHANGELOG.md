@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes will be documented here after the first public tag.
+All notable user-facing changes are documented here. Published tags are immutable.
 
 ## [1.1.0] - 2026-10-16
 
