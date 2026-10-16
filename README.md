@@ -45,8 +45,7 @@ composer require --dev mykholy/laravel-failurelab:^1.0
 ```
 
 The [Packagist-only consumer matrix](https://github.com/mykholy/laravel-failurelab/actions/runs/38892927867)
-checks installation and auto-discovery independently. Version 1.1's
-acknowledgement-loss API is currently in development and **not part of 1.0.0**.
+checks installation and auto-discovery independently. Version 1.1's acknowledgement-loss API is available from `1.1.0` after the release has been published, and is **not part of 1.0.0**.
 
 **Requirements:** PHP 8.3+, Laravel 12 or 13, PHPUnit/Pest in the host app. Keep this in `require-dev`. Set `APP_ENV=testing` in `phpunit.xml` and use a disposable test database. No migrations, middleware, queues, services, or network access are installed by FailureLab.
 
@@ -152,7 +151,7 @@ The canonical source and CI live in this repository. Version 1.0.0 is available 
 
 ### New: the handler committed, but the acknowledgement was lost
 
-Available in the **next 1.1 release** (not in v1.0.0). A webhook handler can finish and
+Introduced in **v1.1.0** (not in v1.0.0). A webhook handler can finish and
 commit successfully, while a caller still retries because its acknowledgement was
 lost. Model this explicitly, without throwing inside a successful handler:
 
@@ -201,9 +200,9 @@ Standalone GitHub Actions validates PHP 8.3–8.5, Laravel 12/13, PHPStan, Pint,
 | `->assertCheckpointHit(string, int)` | Assert exact checkpoint count |
 | `->assertCompleted()` / `->value()` | Check success and inspect returned value |
 | `FailureLab::replay(...)->times(int)->run(callable)` | Run bounded sequential duplicate deliveries |
-| `->loseAcknowledgementOn(int)` | Model acknowledgement lost **after successful handler** (v1.1) |
-| `->assertAcknowledgementPlanSatisfied()` | Verify configured loss occurred after a completed callback (v1.1) |
-| `->assertAcknowledgedAfterLoss()` | Require a later successful acknowledged delivery (v1.1) |
+| `->loseAcknowledgementOn(int)` | Model acknowledgement lost **after successful handler** (1.1.0+) |
+| `->assertAcknowledgementPlanSatisfied()` | Verify configured loss occurred after a completed callback (1.1.0+) |
+| `->assertAcknowledgedAfterLoss()` | Require a later successful acknowledged delivery (1.1.0+) |
 
 A `FailureLabManager` is available from Laravel's service container for dependency-injected tests; the static entry point needs no bootstrapping.
 

@@ -2,7 +2,7 @@
 
 All notable changes will be documented here after the first public tag.
 
-## Unreleased (planned 1.1.0)
+## [1.1.0] - 2026-10-16
 
 ### Added
 
