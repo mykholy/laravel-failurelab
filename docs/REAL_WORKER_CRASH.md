@@ -1,6 +1,6 @@
 # Real Laravel worker SIGKILL and recovery drill
 
-**Experimental integration fixture (not part of the published v1.1.0 API).**
+**Experimental repository-level CI fixture (not a public process-control API in v1.2.0).**
 This independent CI drill starts a real Laravel database queue worker in a
 **throwaway** Laravel host, waits for an SQLite ledger transaction to commit,
 then sends **SIGKILL only to that subprocess**, allows its DB queue lease to

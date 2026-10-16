@@ -15,7 +15,7 @@ For Laravel integration examples using disposable SQLite tables, see `tests/Feat
 | --- | --- |
 | In-process named interruption | `examples/payment-demo.php` |
 | Real Laravel commit boundary | `tests/Feature/DatabaseBoundaryTest.php` |
-| Synthetic unknown provider response / stable idempotency key | [Fake provider guide](../docs/FAKE_PROVIDER.md) (unreleased candidate) |
+| Synthetic unknown provider response / stable idempotency key | [Fake provider guide](../docs/FAKE_PROVIDER.md) (v1.2.0+) |
 | Real worker SIGKILL after commit followed by database queue recovery | [Linux crash drill](../docs/REAL_WORKER_CRASH.md) (separate CI fixture) |
 
 Start with [the documentation index](../docs/README.md) and keep every test

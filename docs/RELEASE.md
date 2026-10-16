@@ -1,6 +1,15 @@
 # FailureLab release verification
 
-## Current stable release — v1.1.0 (2026-10-16)
+## Latest stable release — v1.2.0 (2026-10-16)
+
+- [GitHub stable release](https://github.com/mykholy/laravel-failurelab/releases/tag/v1.2.0), immutable source SHA `9653af99d3888d956748df2da066e22e53d4ff38`.
+- [Public release validation](https://github.com/mykholy/laravel-failurelab/actions/runs/38939862511) succeeded, including exact-source Packagist indexing and real Composer registry installs **without VCS/path overrides** on Laravel 12 and 13.
+- [Core CI](https://github.com/mykholy/laravel-failurelab/actions/runs/38939735373) passed PHP 8.3–8.5, Laravel 12/13, MySQL 8.4, PostgreSQL 17, PHPStan, Pint, dependency audit and independent source export.
+- [Linux queue-crash drill](https://github.com/mykholy/laravel-failurelab/actions/runs/38939735335) passed a genuine SIGKILL followed by fresh-worker recovery on clean Laravel 12 and 13; this remains a CI fixture, **not** a new general-purpose public worker-control API.
+- The **additive public API** is `Testing\FakeCaptureGateway` plus its sanitized `SimulatedUnknownOutcome`, with idempotency and reconciliation negative controls.
+- Earlier `Scenario` / `Replay` methods are backward compatible and no actual external payment requests occur.
+
+## Previous stable release — v1.1.0 (2026-10-16)
 
 - **GitHub Release:** [v1.1.0](https://github.com/mykholy/laravel-failurelab/releases/tag/v1.1.0) (stable, not a prerelease).
 - **Packagist:** [mykholy/laravel-failurelab](https://packagist.org/packages/mykholy/laravel-failurelab), where v1.1.0 resolves to exactly `dd39fcdea2fe4404f41dc216f1eb39b7247ad7c8`, matching the GitHub tag.
