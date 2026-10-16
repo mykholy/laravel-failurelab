@@ -1,0 +1,63 @@
+name: Verify versioned Composer installation
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  versioned-consumer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        laravel: ['12', '13']
+    steps:
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: mbstring, dom, pdo_sqlite, sqlite3
+          tools: composer:v2
+      - name: Create clean Laravel ${{ matrix.laravel }} project
+        run: composer create-project laravel/laravel "$RUNNER_TEMP/tagged-host" "^${{ matrix.laravel }}" --no-interaction --prefer-dist --no-progress
+      - name: Install exact prerelease Git tag from remote Composer VCS
+        working-directory: ${{ runner.temp }}/tagged-host
+        run: |
+          composer config repositories.failurelab '{"type":"vcs","url":"https://github.com/mykholy/laravel-failurelab.git"}'
+          composer require --dev 'mykholy/laravel-failurelab:v0.1.0-beta.1' --no-interaction --prefer-dist --no-progress
+          composer show mykholy/laravel-failurelab
+      - name: Verify independently installed, versioned recovery API
+        working-directory: ${{ runner.temp }}/tagged-host
+        run: |
+          cat > "$RUNNER_TEMP/check-tagged.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+
+          require getcwd().'/vendor/autoload.php';
+          $app = require getcwd().'/bootstrap/app.php';
+          $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+
+          $manager = $app->make(\Mykholy\FailureLab\FailureLabManager::class);
+          $scenario = $manager->scenario('tagged beta from Composer VCS')
+              ->interruptOnceAt('provider.accepted')
+              ->attempts(2)
+              ->run(static function ($point, int $attempt): int {
+                  $point->hit('provider.accepted');
+                  return $attempt;
+              });
+          $scenario->assertAttempts(2)->assertFaultPlanSatisfied()->assertCompleted();
+          if ($scenario->value() !== 2) {
+              throw new \RuntimeException('Wrong checkpoint recovery value');
+          }
+          $replay = $manager->replay('tagged retry')
+              ->times(2)->run(static fn (): bool => true);
+          $replay->assertDeliveries(2)->assertAllCompleted();
+
+          echo "PASS: pinned v0.1.0-beta.1 in clean Laravel app\n";
+          PHP
+          APP_ENV=testing php "$RUNNER_TEMP/check-tagged.php"
