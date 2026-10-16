@@ -1,0 +1,257 @@
+name: FailureLab standalone CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.4', '8.5']
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: PHP syntax
+        run: find src tests examples -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Dependency-free deterministic test engine
+        run: php tests/smoke.php
+      - name: Fake payment/webhook demo
+        env:
+          APP_ENV: testing
+        run: php examples/payment-demo.php
+
+  laravel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - php: '8.3'
+            laravel: '12'
+            testbench: '10'
+          - php: '8.4'
+            laravel: '12'
+            testbench: '10'
+          - php: '8.4'
+            laravel: '13'
+            testbench: '11'
+          - php: '8.5'
+            laravel: '13'
+            testbench: '11'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          extensions: mbstring, dom, pdo_sqlite, sqlite3
+          tools: composer:v2
+      - name: Composer metadata
+        run: composer validate --no-check-publish --strict
+      - name: Resolve matching framework and Testbench
+        run: |
+          composer require --dev --no-update "laravel/framework:^${{ matrix.laravel }}" "orchestra/testbench:^${{ matrix.testbench }}"
+          composer update --with-all-dependencies --no-interaction --prefer-dist --no-progress
+      - name: PHPUnit unit and Laravel integration tests
+        run: vendor/bin/phpunit --configuration phpunit.xml.dist --fail-on-risky
+      - name: Laravel Pint formatting (primary PHP/Laravel matrix)
+        if: matrix.php == '8.4' && matrix.laravel == '13'
+        run: vendor/bin/pint --test
+      - name: Prepare offline Pint suggestions for review
+        if: failure() && matrix.php == '8.4' && matrix.laravel == '13'
+        run: |
+          vendor/bin/pint
+          git diff -- src tests examples > "$RUNNER_TEMP/pint-format.patch"
+      - name: Upload Pint suggestions (never auto-commit)
+        if: failure() && matrix.php == '8.4' && matrix.laravel == '13'
+        uses: actions/upload-artifact@v4
+        with:
+          name: failurelab-pint-proposal-${{ github.run_id }}
+          path: ${{ runner.temp }}/pint-format.patch
+          if-no-files-found: error
+          retention-days: 3
+
+  consumer-install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        laravel: ['12', '13']
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: mbstring, dom, pdo_sqlite, sqlite3
+          tools: composer:v2
+      - name: Create clean Laravel host application
+        run: |
+          composer create-project laravel/laravel "$RUNNER_TEMP/failurelab-host" "^${{ matrix.laravel }}" --no-interaction --prefer-dist --no-progress
+      - name: Install package as real dev dependency via Composer path repository
+        working-directory: ${{ runner.temp }}/failurelab-host
+        run: |
+          composer config repositories.failurelab "{\"type\":\"path\",\"url\":\"${GITHUB_WORKSPACE}\",\"options\":{\"symlink\":false}}"
+          composer require --dev "mykholy/laravel-failurelab:@dev" --no-interaction --prefer-dist --no-progress
+          composer show mykholy/laravel-failurelab
+      - name: Verify Laravel provider auto-discovery and independent consumer usage
+        working-directory: ${{ runner.temp }}/failurelab-host
+        run: |
+          cat > "$RUNNER_TEMP/check-consumer.php" <<'PHP'
+          <?php
+
+          declare(strict_types=1);
+
+          require getcwd().'/vendor/autoload.php';
+          $app = require getcwd().'/bootstrap/app.php';
+          $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+
+          $manager = $app->make(\Mykholy\FailureLab\FailureLabManager::class);
+          $result = $manager->scenario('fresh Laravel consumer')
+              ->interruptOnceAt('after.gateway')
+              ->attempts(2)
+              ->run(static function ($checkpoint, int $attempt): int {
+                  $checkpoint->hit('after.gateway');
+
+                  return $attempt;
+              });
+          $result->assertAttempts(2)
+              ->assertFaultPlanSatisfied()
+              ->assertCompleted();
+
+          $delivered = $manager->replay('redelivery through fresh install')
+              ->times(2)
+              ->run(static fn (): bool => true);
+          $delivered->assertDeliveries(2)->assertAllCompleted();
+
+          echo "PASS: independent Laravel Composer installation, provider discovery, checkpoint and replay\n";
+          PHP
+          APP_ENV=testing php "$RUNNER_TEMP/check-consumer.php"
+
+  static-analysis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: mbstring, dom, pdo_sqlite, sqlite3
+          tools: composer:v2
+      - name: Resolve Laravel 13 and static analysis dependencies
+        run: |
+          composer require --dev --no-update "laravel/framework:^13.0" "orchestra/testbench:^11.0"
+          composer update --with-all-dependencies --no-interaction --prefer-dist --no-progress
+      - name: PHPStan clean baseline
+        run: composer analyse
+
+  real-database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        driver: ['mysql', 'pgsql']
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: failurelab_test
+          MYSQL_USER: failurelab
+          MYSQL_PASSWORD: failurelab_ci_only
+          MYSQL_ROOT_PASSWORD: failurelab_ci_root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: failurelab_test
+          POSTGRES_USER: failurelab
+          POSTGRES_PASSWORD: failurelab_ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U failurelab -d failurelab_test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: mbstring, dom, pdo_mysql, pdo_pgsql, pdo_sqlite, sqlite3
+          tools: composer:v2
+      - name: Resolve Laravel 13 and Testbench
+        run: |
+          composer require --dev --no-update "laravel/framework:^13.0" "orchestra/testbench:^11.0"
+          composer update --with-all-dependencies --no-interaction --prefer-dist --no-progress
+      - name: Transaction and replay integration on ${{ matrix.driver }}
+        env:
+          FAILURELAB_TEST_DB: ${{ matrix.driver }}
+          APP_ENV: testing
+        run: vendor/bin/phpunit --configuration phpunit.xml.dist --filter DatabaseBoundaryTest --fail-on-risky
+
+  dependency-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: mbstring, dom, pdo_sqlite, sqlite3
+          tools: composer:v2
+      - name: Resolve framework and dependencies
+        run: |
+          composer require --dev --no-update 'laravel/framework:^13.0' 'orchestra/testbench:^11.0'
+          composer update --with-all-dependencies --no-interaction --prefer-dist --no-progress
+      - name: Fail on known dependency vulnerabilities
+        run: composer audit --locked --no-interaction
+
+  source-archive:
+    needs: [smoke, laravel, consumer-install, static-analysis, real-database, dependency-audit]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - name: Export canonical Composer package
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          git archive --format=tar --prefix=laravel-failurelab/ HEAD | gzip -9 > dist/laravel-failurelab-source.tar.gz
+          # Avoid grep -q early pipe close with pipefail (tar may exit on SIGPIPE).
+          tar -tzf dist/laravel-failurelab-source.tar.gz > dist/archive-contents.txt
+          grep -Fxq 'laravel-failurelab/composer.json' dist/archive-contents.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: failurelab-standalone-source-${{ github.sha }}
+          path: dist/laravel-failurelab-source.tar.gz
+          if-no-files-found: error
+          retention-days: 30
