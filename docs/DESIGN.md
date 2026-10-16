@@ -30,7 +30,7 @@ No global state, facades, database tables, production middleware or queue interc
 
 ## Next phase, if demand is validated
 
-1. Real process-isolated SIGTERM/SIGKILL test driver with explicit allowlists, ephemeral database and a supervisor; clearly distinct from synchronous injection.
+1. The Linux-only *disposable CI fixture* now proves a real SIGKILL recovery path for a Laravel database queue worker. A reusable public process supervisor remains separate, not implemented.
 2. MySQL and PostgreSQL integration fixture to validate commit boundary behavior without wrapped PHPUnit transactions.
 3. Provider-neutral fake HTTP gateway fixture with key-based idempotency and unknown-outcome simulations.
 4. Host app demonstration with documented limitations, mutation tests and versioned public contracts.

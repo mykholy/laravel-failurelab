@@ -2,6 +2,14 @@
 
 All notable user-facing changes are documented here. Published tags are immutable.
 
+## Unreleased — next minor release (not yet on Packagist)
+
+### Developer testing capabilities
+
+- Introduce an opt-in, in-memory `Testing\FakeCaptureGateway` with deterministic idempotency and a synthetic post-acceptance unknown-outcome exception. No network calls, production credentials or provider coupling.
+- Verify a **real** Linux-owned worker SIGKILL after a committed SQLite ledger write, and recovery through a fresh Laravel 12/13 database queue worker. This is a separate CI fixture, **not** a promise that the public replay runner kills workers.
+- Add a professionally organized documentation index, quick start, recovery patterns and clear trust-boundary guidance.
+
 ## [1.1.0] - 2026-10-16
 
 GitHub release: https://github.com/mykholy/laravel-failurelab/releases/tag/v1.1.0

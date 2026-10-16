@@ -16,6 +16,8 @@
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-green"></a>
 </p>
 
+**[Start in five minutes](docs/QUICKSTART.md)** · **[Documentation](docs/README.md)** · [Recovery patterns](docs/RECOVERY_PATTERNS.md) · [Fake provider fixture](docs/FAKE_PROVIDER.md) · [Real SIGKILL drill](docs/REAL_WORKER_CRASH.md) · [Security](docs/SAFETY.md)
+
 > **Latest verified stable release: [v1.1.0](https://github.com/mykholy/laravel-failurelab/releases/tag/v1.1.0).** Published on [Packagist](https://packagist.org/packages/mykholy/laravel-failurelab) with the same immutable source commit `dd39fcdea2fe4404f41dc216f1eb39b7247ad7c8`; fresh Laravel 12/13 consumers installed that exact version without VCS/path overrides. [See verification](docs/RELEASE.md).
 
 A payment provider accepts a charge, but your application throws before saving the result. A webhook arrives three times. How do you prove your code won't create the local effect twice?
@@ -37,7 +39,7 @@ FailureLab runs the **same operation under controlled, named failure points**, r
 
 Laravel's Queue/Bus fakes verify dispatch behavior. [Race Lab](https://packagist.org/packages/race-lab/laravel-race-lab) tests **concurrent workers at checkpoints**. FailureLab focuses on **bounded sequential replay of one business operation** after a controlled in-process interruption: a reproducible recovery assertion suitable for an isolated PHPUnit test.
 
-It does **not** replace Race Lab, Horizon, Pulse, FlowGuard, Testbench, real subprocess crash tests or real distributed-systems integration tests. It makes no exactly-once delivery guarantee.
+It does **not** replace Race Lab, Horizon, Pulse, FlowGuard or Testbench. A **separate Linux-only CI fixture** now tests real Laravel worker SIGKILL/recovery, but the public Scenario and Replay runners remain in-process. It makes no exactly-once delivery guarantee.
 
 ## Installation
 
@@ -141,14 +143,14 @@ The canonical Composer package source now lives in this standalone repository. I
 
 | It does | It does **not** |
 | --- | --- |
-| Simulate a specific exception on a named checkpoint/attempt | Kill a worker, process, container or network connection |
+| Simulate a specific exception on a named checkpoint/attempt | Kill a worker through the public Scenario API; a separate Linux CI drill exercises SIGKILL |
 | Bound re-execution to at most 20 attempts | Retry arbitrary application exceptions |
 | Record attempts, exact interrupted points and checked checkpoints | Record every side effect or guarantee idempotency |
 | Sequentially replay a callback up to 20 times | Simulate true parallel transport or race conditions |
 | Fail closed when `APP_ENV` is not `testing` | Make calls to a real external payment provider safe |
 | Work with regular PHPUnit/Pest assertions | Depend on a daemon, production middleware or migration |
 
-For edge cases, see [Limitations & threat model](docs/SAFETY.md), [Design decisions](docs/DESIGN.md), and [Runnable examples](examples/README.md).
+For hands-on examples, see [Five-minute quick start](docs/QUICKSTART.md), [Recovery patterns](docs/RECOVERY_PATTERNS.md), [Fake provider](docs/FAKE_PROVIDER.md), [real Laravel worker crash drill](docs/REAL_WORKER_CRASH.md), [Limitations & threat model](docs/SAFETY.md), and [Runnable examples](examples/README.md).
 
 ## Release and distribution
 
@@ -208,11 +210,12 @@ Standalone GitHub Actions validates PHP 8.3–8.5, Laravel 12/13, PHPStan, Pint,
 | `->loseAcknowledgementOn(int)` | Model acknowledgement lost **after successful handler** (1.1.0+) |
 | `->assertAcknowledgementPlanSatisfied()` | Verify configured loss occurred after a completed callback (1.1.0+) |
 | `->assertAcknowledgedAfterLoss()` | Require a later successful acknowledged delivery (1.1.0+) |
+| `new FakeCaptureGateway` | Test-only provider with stable idempotency keys and unknown responses (unreleased, see docs) |
 
 A `FailureLabManager` is available from Laravel's service container for dependency-injected tests; the static entry point needs no bootstrapping.
 
 ## Project status
 
-**v1.1.0 — stable on GitHub and Packagist**, with matching immutable source and verified independent Composer installs on Laravel 12 and 13. FailureLab remains a test-only library: it does not simulate real process termination, concurrent workers, or distributed exactly-once delivery. [Release verification](docs/RELEASE.md) covers the exact evidence and limits.
+**v1.1.0 — latest tagged stable on GitHub and Packagist** (the new fake fixture is unreleased until a separately verified minor tag), with matching immutable source and verified independent Composer installs on Laravel 12 and 13. FailureLab remains a test-only library: it does not simulate real process termination, concurrent workers, or distributed exactly-once delivery. [Release verification](docs/RELEASE.md) covers the exact evidence and limits.
 
 MIT licensed. Contributions welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Maintained by [@mykholy](https://github.com/mykholy).
