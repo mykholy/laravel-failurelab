@@ -54,6 +54,7 @@ jobs:
               '.github/workflows/packagist-consumers.yml',
               '.github/workflows/tagged-consumer.yml',
               '.github/workflows/packagist-v1-1.yml',
+              '.github/workflows/worker-crash.yml',
             ];
             const all = await github.paginate(github.rest.actions.listWorkflowRunsForRepo, {
               ...context.repo, head_sha: context.sha, branch: 'main', event: 'push', per_page: 100,

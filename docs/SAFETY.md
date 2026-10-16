@@ -2,7 +2,7 @@
 
 ## Scope
 
-FailureLab is an **in-process deterministic exception/replay harness**. It does not terminate a PHP process, replace a queue worker, intercept arbitrary execution, or verify actual crash safety. A PHPUnit test's callback is run explicitly on the test process. The application under test owns its database transactions, fake provider, idempotency state, and cleanup.
+FailureLab's **public runtime API** is an in-process deterministic exception/replay harness. It does not terminate a PHP process, replace a queue worker or intercept arbitrary execution. A separate, opt-in CI example now runs a real **disposable** Laravel queue worker and kills only its owned child process; that demonstration is not part of the public Scenario/Replay API. A PHPUnit test's callback is run explicitly on the test process. The application under test owns its database transactions, fake provider, idempotency state, and cleanup.
 
 ## Non-negotiable constraints
 
@@ -47,3 +47,18 @@ modify transport acknowledgements, broker offsets, process state or HTTP
 responses, and does not cause automatic redelivery. The application under test
 must own the idempotency key and effect deduplication. Explicitly assert the
 planned loss, a later acknowledged callback, and an application-level invariant.
+
+
+## Separate owned-process drill and fake provider
+
+The isolated [Linux crash drill](REAL_WORKER_CRASH.md) controls only children
+created with `proc_open()` inside disposable Laravel application hosts. It
+never scans, enumerates or kills arbitrary processes. It does not run from
+production, use a production queue, or rely on an existing database. Its
+temporary SQLite fixture is uniquely created and deleted in a bounded test.
+
+The optional [fake capture gateway](FAKE_PROVIDER.md) has **no networking**.
+It stores synthetic idempotency state in local memory, and raises a sanitized
+exception *after* fake acceptance to model a missing response. Never
+interpret its passing assertions as proof of an actual provider's behavior;
+provider sandbox tests and real reconciliation contracts remain separate.
