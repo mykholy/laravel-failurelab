@@ -1,0 +1,70 @@
+name: Independent VCS consumer installs
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  vcs-consumer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        laravel: ['12', '13']
+    steps:
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: mbstring, dom, pdo_sqlite, sqlite3
+          tools: composer:v2
+      - name: Create independent Laravel ${{ matrix.laravel }} application
+        run: |
+          composer create-project laravel/laravel "$RUNNER_TEMP/host" "^${{ matrix.laravel }}" --no-interaction --prefer-dist --no-progress
+      - name: Install published GitHub source through Composer VCS, not local path
+        working-directory: ${{ runner.temp }}/host
+        run: |
+          composer config repositories.failurelab '{"type":"vcs","url":"https://github.com/mykholy/laravel-failurelab.git"}'
+          composer require --dev 'mykholy/laravel-failurelab:dev-main' --no-interaction --prefer-dist --no-progress
+          composer show mykholy/laravel-failurelab
+      - name: Verify Laravel auto-discovery and actual recovery API
+        working-directory: ${{ runner.temp }}/host
+        run: |
+          cat > "$RUNNER_TEMP/verify.php" <<'PHP'
+          <?php
+
+          declare(strict_types=1);
+
+          require getcwd().'/vendor/autoload.php';
+          $app = require getcwd().'/bootstrap/app.php';
+          $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+
+          $manager = $app->make(\Mykholy\FailureLab\FailureLabManager::class);
+          $report = $manager->scenario('standalone GitHub VCS install')
+              ->interruptOnceAt('provider.accepted')
+              ->attempts(2)
+              ->run(static function ($point, int $attempt): int {
+                  $point->hit('provider.accepted');
+
+                  return $attempt;
+              });
+
+          $report->assertAttempts(2)->assertFaultPlanSatisfied()->assertCompleted();
+          if ($report->value() !== 2) {
+              throw new \RuntimeException('Unexpected retry result');
+          }
+
+          $manager->replay('delivery replay')
+              ->times(3)
+              ->run(static fn (): bool => true)
+              ->assertDeliveries(3)
+              ->assertAllCompleted();
+
+          echo "PASS: independent Laravel app installed from GitHub VCS\n";
+          PHP
+          APP_ENV=testing php "$RUNNER_TEMP/verify.php"
