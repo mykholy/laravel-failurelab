@@ -1,0 +1,64 @@
+name: Packagist registry consumers
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  packagist:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        laravel: ['12', '13']
+    steps:
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: mbstring, dom, pdo_sqlite, sqlite3
+          tools: composer:v2
+      - name: Create independent Laravel ${{ matrix.laravel }} consumer
+        run: composer create-project laravel/laravel "$RUNNER_TEMP/packagist-host" "^${{ matrix.laravel }}" --no-interaction --prefer-dist --no-progress
+      - name: Require stable FailureLab through Packagist, no custom repositories
+        working-directory: ${{ runner.temp }}/packagist-host
+        run: |
+          test "$(php -r '$j=json_decode(file_get_contents("composer.json"),true); echo empty($j["repositories"]) ? "none" : "override";')" = none
+          composer require --dev 'mykholy/laravel-failurelab:^1.0' --no-interaction --prefer-dist --no-progress
+          composer show --format=json mykholy/laravel-failurelab > "$RUNNER_TEMP/installed-package.json"
+          php -r '$p=json_decode(file_get_contents(getenv("RUNNER_TEMP")."/installed-package.json"),true); if (!preg_match("/^v?1\\./", $p["versions"][0] ?? "")) { exit(1); }'
+      - name: Verify auto-discovery and recovery API
+        working-directory: ${{ runner.temp }}/packagist-host
+        run: |
+          cat > "$RUNNER_TEMP/test-registry.php" <<'PHP'
+          <?php
+
+          declare(strict_types=1);
+
+          require getcwd().'/vendor/autoload.php';
+          $app = require getcwd().'/bootstrap/app.php';
+          $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+
+          $manager = $app->make(\Mykholy\FailureLab\FailureLabManager::class);
+          $report = $manager->scenario('registry only consumer')
+              ->interruptOnceAt('gateway.response')
+              ->attempts(2)
+              ->run(static function ($checkpoint, int $attempt): int {
+                  $checkpoint->hit('gateway.response');
+
+                  return $attempt;
+              });
+          $report->assertFaultPlanSatisfied()->assertCompleted();
+          if ($report->value() !== 2) {
+              throw new \RuntimeException('Recovery test did not complete on retry.');
+          }
+          $manager->replay('webhook')->times(2)->run(static fn (): bool => true)->assertAllCompleted();
+          echo "PASS: Packagist-only install in independent Laravel consumer\n";
+          PHP
+          APP_ENV=testing php "$RUNNER_TEMP/test-registry.php"

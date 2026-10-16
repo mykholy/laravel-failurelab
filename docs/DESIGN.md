@@ -36,3 +36,20 @@ No global state, facades, database tables, production middleware or queue interc
 4. Host app demonstration with documented limitations, mutation tests and versioned public contracts.
 
 All of those are roadmap candidates, not features claimed by the current source.
+
+
+## Acknowledgement-loss replay (1.1)
+
+When the handler returns normally, the test runner may record that a caller did
+not receive its acknowledgement, using `loseAcknowledgementOn(number)`.
+Unlike a handler exception, this means the business callback **completed** and
+its side effects may already be durable. It never triggers an implicit retry:
+`times(n)` determines the exact number of sequential invocations, and the
+application must implement deduplication.
+
+The plan is immutable. A scheduled loss is counted only when that delivery
+actually completes; exceptions cannot satisfy it. The separate
+`assertAcknowledgementPlanSatisfied()` and `assertAcknowledgedAfterLoss()`
+verify the test's intended sequence; `assertInvariant()` must still validate
+the application's externally observable business effect. Previous ReplayReport
+constructor callers and `summary()` shape stay compatible.

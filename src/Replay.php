@@ -16,6 +16,9 @@ final class Replay
 
     private bool $continueAfterFailure = false;
 
+    /** @var list<int> */
+    private array $scheduledAcknowledgementLosses = [];
+
     public function __construct(public readonly string $name, private readonly EnvironmentGuard $guard)
     {
         Names::scenario($name);
@@ -47,15 +50,51 @@ final class Replay
         return $next;
     }
 
+    /**
+     * Model a successful handler whose acknowledgement does not reach the caller.
+     *
+     * This is metadata for a bounded sequential test. It does not drop real
+     * network packets, re-run the handler, or change the original callback.
+     */
+    public function loseAcknowledgementOn(int $delivery): self
+    {
+        if ($delivery < 1 || $delivery > 20) {
+            throw new InvalidArgumentException('Acknowledgement-loss delivery must be between 1 and 20.');
+        }
+
+        if (in_array($delivery, $this->scheduledAcknowledgementLosses, true)) {
+            throw new InvalidArgumentException('Duplicate acknowledgement-loss delivery.');
+        }
+
+        $next = clone $this;
+        $next->scheduledAcknowledgementLosses[] = $delivery;
+
+        return $next;
+    }
+
     /** @param callable(int): mixed $handler */
     public function run(callable $handler): ReplayReport
     {
         $this->guard->assertTesting();
+
+        foreach ($this->scheduledAcknowledgementLosses as $delivery) {
+            if ($delivery > $this->deliveries) {
+                throw new InvalidArgumentException('Acknowledgement-loss delivery exceeds configured replay count.');
+            }
+        }
+
         $attempts = [];
+        $lostAcknowledgements = [];
 
         for ($delivery = 1; $delivery <= $this->deliveries; $delivery++) {
             try {
-                $attempts[] = new Attempt($delivery, 'completed', $handler($delivery));
+                $value = $handler($delivery);
+                $attempts[] = new Attempt($delivery, 'completed', $value);
+
+                // Acknowledgements can be lost only after a handler completed.
+                if (in_array($delivery, $this->scheduledAcknowledgementLosses, true)) {
+                    $lostAcknowledgements[] = $delivery;
+                }
             } catch (Throwable $error) {
                 $attempts[] = new Attempt($delivery, 'failed', error: $error);
                 if (! $this->continueAfterFailure) {
@@ -65,6 +104,6 @@ final class Replay
             }
         }
 
-        return new ReplayReport($this->name, $attempts);
+        return new ReplayReport($this->name, $attempts, $this->scheduledAcknowledgementLosses, $lostAcknowledgements);
     }
 }

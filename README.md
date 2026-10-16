@@ -37,19 +37,15 @@ It does **not** replace Race Lab, Horizon, Pulse, FlowGuard, Testbench, real sub
 
 ## Installation
 
-Before verified Packagist publication, install from this Git repository in a disposable Laravel 12/13 test application:
+**Verified on Packagist:** clean Laravel 12 and 13 applications installed `v1.0.0`
+without any custom Composer VCS/path repository:
 
 ```bash
-composer config repositories.failurelab '{"type":"vcs","url":"https://github.com/mykholy/laravel-failurelab.git"}'
 composer require --dev mykholy/laravel-failurelab:^1.0
 ```
 
-Once the package is actually indexed by Packagist, remove the custom VCS repository configuration and use standard installation:
-
-```bash
-composer config --unset repositories.failurelab
-composer require --dev mykholy/laravel-failurelab:^1.0
-```
+The [Packagist-only consumer matrix](https://github.com/mykholy/laravel-failurelab/actions/runs/38892927867)
+checks installation and auto-discovery independently. Version 1.1's acknowledgement-loss API is available from `1.1.0` after the release has been published, and is **not part of 1.0.0**.
 
 **Requirements:** PHP 8.3+, Laravel 12 or 13, PHPUnit/Pest in the host app. Keep this in `require-dev`. Set `APP_ENV=testing` in `phpunit.xml` and use a disposable test database. No migrations, middleware, queues, services, or network access are installed by FailureLab.
 
@@ -151,7 +147,34 @@ For edge cases, see [Limitations & threat model](docs/SAFETY.md), [Design decisi
 
 ## Release and distribution
 
-The canonical source and CI are maintained in this repository. Check [GitHub Releases](https://github.com/mykholy/laravel-failurelab/releases) for actual tags and [Packagist](https://packagist.org/packages/mykholy/laravel-failurelab) for package discovery. Do not assume a version has been published merely because its Composer package name is declared.
+The canonical source and CI live in this repository. Version 1.0.0 is available through [GitHub Releases](https://github.com/mykholy/laravel-failurelab/releases) and installable via [Packagist](https://packagist.org/packages/mykholy/laravel-failurelab). CI also verifies clean registry-based consumer installation.
+
+### New: the handler committed, but the acknowledgement was lost
+
+Introduced in **v1.1.0** (not in v1.0.0). A webhook handler can finish and
+commit successfully, while a caller still retries because its acknowledgement was
+lost. Model this explicitly, without throwing inside a successful handler:
+
+```php
+$report = FailureLab::replay('ack lost after webhook committed')
+    ->times(3) // explicit simulated redelivery count; never automatic network retry
+    ->loseAcknowledgementOn(1)
+    ->run(fn () => $webhookHandler->handle($sameVerifiedEvent));
+
+$report->assertDeliveries(3)
+    ->assertAllCompleted() // each handler invocation returned successfully
+    ->assertAcknowledgementPlanSatisfied()
+    ->assertAcknowledgementLostOn(1)
+    ->assertAcknowledgedAfterLoss()
+    ->assertInvariant('one ledger entry', fn (): bool => DB::table('ledger_entries')->count() === 1);
+```
+
+Unlike `continueAfterFailure()`, this records **successful application execution**
+with **simulated lost acknowledgement**. No network packet is dropped, no queue is
+started, and no new delivery is scheduled automatically. The caller explicitly
+sets `times()`. The report distinguishes attempted loss from actual loss,
+so a callback that throws first cannot silently satisfy the loss plan.
+The handler is responsible for idempotency and real database integrity.
 
 ## Developer workflow
 
@@ -177,6 +200,9 @@ Standalone GitHub Actions validates PHP 8.3–8.5, Laravel 12/13, PHPStan, Pint,
 | `->assertCheckpointHit(string, int)` | Assert exact checkpoint count |
 | `->assertCompleted()` / `->value()` | Check success and inspect returned value |
 | `FailureLab::replay(...)->times(int)->run(callable)` | Run bounded sequential duplicate deliveries |
+| `->loseAcknowledgementOn(int)` | Model acknowledgement lost **after successful handler** (1.1.0+) |
+| `->assertAcknowledgementPlanSatisfied()` | Verify configured loss occurred after a completed callback (1.1.0+) |
+| `->assertAcknowledgedAfterLoss()` | Require a later successful acknowledged delivery (1.1.0+) |
 
 A `FailureLabManager` is available from Laravel's service container for dependency-injected tests; the static entry point needs no bootstrapping.
 

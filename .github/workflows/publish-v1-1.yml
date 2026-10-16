@@ -1,0 +1,88 @@
+name: Publish FailureLab v1.1.0 after full CI
+
+on:
+  workflow_run:
+    workflows: ["FailureLab standalone CI"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == 'mykholy/laravel-failurelab'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: mbstring, dom, pdo_sqlite, sqlite3
+          tools: composer:v2
+      - name: Check current main and exact source
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERIFIED_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$VERIFIED_SHA"
+          test "$(gh api "repos/${GITHUB_REPOSITORY}/commits/main" --jq .sha)" = "$VERIFIED_SHA"
+          test -f CHANGELOG.md && test -f LICENSE && test -f docs/SAFETY.md
+          grep -Fq '[1.1.0]' CHANGELOG.md
+          composer validate --no-check-publish --strict
+          php tests/smoke.php
+          APP_ENV=testing php examples/payment-demo.php
+      - name: Publish immutable minor version then test tagged Composer installs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERIFIED_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          tag=v1.1.0
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}" >/dev/null 2>&1; then
+            echo "v1.1.0 tag already exists; refusing to overwrite it"
+            exit 0
+          fi
+          gh release create "$tag" --target "$VERIFIED_SHA" --title "FailureLab v1.1.0" --notes "Additive minor release: deterministic simulated acknowledgement loss after a successful handler, assertion guards against unreachable fault plans and missing later acknowledged recovery, and SQLite/MySQL/PostgreSQL idempotency tests. Compatible with v1.0.0 APIs. No real queue/network packet loss or exactly-once guarantee."
+          rollback() {
+            echo "Failed post-release validation; removing only the tag created by this job"
+            gh release delete "$tag" --yes --cleanup-tag || true
+          }
+          trap rollback ERR
+          for laravel in 12 13; do
+            dir="$RUNNER_TEMP/failurelab-$laravel"
+            composer create-project laravel/laravel "$dir" "^$laravel" --no-interaction --prefer-dist --no-progress
+            (
+              cd "$dir"
+              composer config repositories.failurelab '{"type":"vcs","url":"https://github.com/mykholy/laravel-failurelab.git"}'
+              composer require --dev 'mykholy/laravel-failurelab:v1.1.0' --no-interaction --prefer-dist --no-progress
+              APP_ENV=testing php -r '
+              require "vendor/autoload.php";
+              $app = require "bootstrap/app.php";
+              $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+              $manager = $app->make(\Mykholy\FailureLab\FailureLabManager::class);
+              $effects = 0;
+              $report = $manager->replay("tagged acknowledgement-loss recovery")
+                  ->times(3)->loseAcknowledgementOn(1)
+                  ->run(function () use (&$effects): void { $effects = 1; });
+              $report->assertDeliveries(3)->assertAllCompleted()
+                  ->assertAcknowledgementPlanSatisfied()
+                  ->assertAcknowledgementLostOn(1)
+                  ->assertAcknowledgedAfterLoss()
+                  ->assertInvariant("single effect", fn (): bool => $effects === 1);
+              '
+            )
+          done
+          trap - ERR
+          gh release view "$tag" --json tagName,isPrerelease,url
