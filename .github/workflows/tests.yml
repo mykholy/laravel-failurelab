@@ -249,14 +249,7 @@ jobs:
           # Avoid grep -q early pipe close with pipefail (tar may exit on SIGPIPE).
           tar -tzf dist/laravel-failurelab-source.tar.gz > dist/archive-contents.txt
           grep -Fxq 'laravel-failurelab/composer.json' dist/archive-contents.txt
-          if grep -Eq '^laravel-failurelab/(\.github|tests)(/|$)|^laravel-failurelab/(phpunit\.xml\.dist|phpstan\.neon\.dist)
-      - uses: actions/upload-artifact@v4
-        with:
-          name: failurelab-standalone-source-${{ github.sha }}
-          path: dist/laravel-failurelab-source.tar.gz
-          if-no-files-found: error
-          retention-days: 30
- dist/archive-contents.txt; then
+          if grep -Fq 'laravel-failurelab/.github/' dist/archive-contents.txt || grep -Fq 'laravel-failurelab/tests/' dist/archive-contents.txt; then
             echo 'Development files leaked into exported Composer archive'
             exit 1
           fi
