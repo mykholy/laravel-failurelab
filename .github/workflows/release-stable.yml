@@ -110,7 +110,7 @@ jobs:
         run: |
           set -euo pipefail
           for attempt in $(seq 1 40); do
-            curl --fail --silent --show-error --no-cache \
+            curl --fail --silent --show-error --header "Cache-Control: no-cache" \
               'https://repo.packagist.org/p2/mykholy/laravel-failurelab.json' > "$RUNNER_TEMP/package.json"
             if jq -e --arg v "$VERSION" --arg sha "$GITHUB_SHA" \
               'any(.packages["mykholy/laravel-failurelab"][]?; (.version == $v or .version == ($v | ltrimstr("v"))) and .source.reference == $sha)' \
