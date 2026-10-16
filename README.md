@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/failurelab-readme-hero.webp" width="1600" alt="Laravel FailureLab: deterministic fault injection, replay and recovery assertions"></p>
+
 <p align="center">
   <strong>FAILURELAB</strong><br>
   <em>Break the test. Prove the recovery.</em>
