@@ -1,12 +1,12 @@
 # Five-minute quick start
 
 Use FailureLab in a **throwaway local or CI Laravel project**. The public API
-example here works with the already tagged **v1.1.0**.
+example here works with the already tagged **v1.2.0**.
 
 ## Install
 
 ```bash
-composer require --dev mykholy/laravel-failurelab:^1.1
+composer require --dev mykholy/laravel-failurelab:^1.2
 ```
 
 Requirements: PHP 8.3+, Laravel 12/13 and `APP_ENV=testing` under CLI.
@@ -56,6 +56,6 @@ controls, a passing test can conceal a skipped failure injection.
 ## Next
 
 - [Replay failed or duplicated webhooks](RECOVERY_PATTERNS.md)
-- [Unknown provider outcomes](FAKE_PROVIDER.md) (unreleased API)
+- [Unknown provider outcomes](FAKE_PROVIDER.md) (v1.2.0+)
 - [Real disposable queue worker SIGKILL recovery](REAL_WORKER_CRASH.md)
 - [Safety and limits](SAFETY.md)

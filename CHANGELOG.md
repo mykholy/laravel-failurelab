@@ -4,7 +4,7 @@ All notable user-facing changes are documented here. Published tags are immutabl
 
 ## [1.2.0] - 2026-10-16
 
-*Planned candidate until GitHub Release and Packagist verification have both passed.*
+**Published stable:** [v1.2.0 on GitHub](https://github.com/mykholy/laravel-failurelab/releases/tag/v1.2.0). Exact-source Packagist registry installs and the new fake API passed in fresh Laravel 12/13 apps: [release CI](https://github.com/mykholy/laravel-failurelab/actions/runs/38939862511).
 
 ### Developer testing capabilities
 

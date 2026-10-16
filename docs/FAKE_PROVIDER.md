@@ -1,6 +1,6 @@
 # Test-only fake provider: idempotency and unknown outcomes
 
-**Added in v1.2.0** (check that the tagged release is published before installing; not available in v1.1.0).
+**Available since [v1.2.0](https://github.com/mykholy/laravel-failurelab/releases/tag/v1.2.0)** on GitHub and Packagist; this API is absent from v1.1.0.
 `Mykholy\FailureLab\Testing\FakeCaptureGateway` is a **purely in-memory fake**.
 It makes **zero HTTP requests** and stores no real payments. Calls sharing an
 idempotency key return the same deterministic synthetic capture reference.

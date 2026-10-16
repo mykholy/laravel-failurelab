@@ -24,9 +24,8 @@ invariant: a committed payment, a webhook event, or a durable local effect.
 
 ## Environment compatibility
 
-The published v1.1.0 package targets **PHP 8.3+**, **Laravel 12/13**, and
-Composer 2. The new provider fixture and process drill are development work
-until included in a separately verified release. The process drill itself
+The published v1.2.0 package targets **PHP 8.3+**, **Laravel 12/13**, and
+Composer 2. The provider fixture was published in v1.2.0. The real worker drill remains a separate CI-only integration fixture, not a public process supervisor. The drill itself
 requires **Linux** and a disposable SQLite-backed Laravel host.
 
 ## Important interpretation

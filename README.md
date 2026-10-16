@@ -18,7 +18,7 @@
 
 **[Start in five minutes](docs/QUICKSTART.md)** · **[Documentation](docs/README.md)** · [Recovery patterns](docs/RECOVERY_PATTERNS.md) · [Fake provider fixture](docs/FAKE_PROVIDER.md) · [Real SIGKILL drill](docs/REAL_WORKER_CRASH.md) · [Security](docs/SAFETY.md)
 
-> **Latest verified stable release: [v1.1.0](https://github.com/mykholy/laravel-failurelab/releases/tag/v1.1.0).** Published on [Packagist](https://packagist.org/packages/mykholy/laravel-failurelab) with the same immutable source commit `dd39fcdea2fe4404f41dc216f1eb39b7247ad7c8`; fresh Laravel 12/13 consumers installed that exact version without VCS/path overrides. [See verification](docs/RELEASE.md).
+> **Latest verified stable release: [v1.2.0](https://github.com/mykholy/laravel-failurelab/releases/tag/v1.2.0).** Available on [Packagist](https://packagist.org/packages/mykholy/laravel-failurelab) from immutable source commit `9653af99d3888d956748df2da066e22e53d4ff38`. Independent Laravel 12/13 applications installed and exercised the tagged package from the **public registry without custom VCS repositories**. [CI evidence](https://github.com/mykholy/laravel-failurelab/actions/runs/38939862511) · [Release verification](docs/RELEASE.md).
 
 A payment provider accepts a charge, but your application throws before saving the result. A webhook arrives three times. How do you prove your code won't create the local effect twice?
 
@@ -43,16 +43,16 @@ It does **not** replace Race Lab, Horizon, Pulse, FlowGuard or Testbench. A **se
 
 ## Installation
 
-**Verified on Packagist:** clean Laravel 12 and 13 applications installed `v1.0.0` and `v1.1.0`
+**Verified on Packagist:** clean Laravel 12 and 13 applications installed `v1.0.0`, `v1.1.0` and `v1.2.0`
 without any custom Composer VCS/path repository:
 
 ```bash
-composer require --dev mykholy/laravel-failurelab:^1.0
+composer require --dev mykholy/laravel-failurelab:^1.2
 ```
 
 The [Packagist-only stable consumer matrix](https://github.com/mykholy/laravel-failurelab/actions/runs/38892927867)
-and [pinned v1.1.0 registry matrix](https://github.com/mykholy/laravel-failurelab/actions/runs/38894111452)
-check installation and auto-discovery independently. Version 1.1's acknowledgement-loss API is available in the published **v1.1.0** GitHub release; it is not part of v1.0.0.
+and [pinned v1.2.0 public release checks](https://github.com/mykholy/laravel-failurelab/actions/runs/38939862511)
+verify installation and public API execution independently. Version 1.1's acknowledgement-loss API is available in the published **v1.1.0** GitHub release; it is not part of v1.0.0.
 
 **Requirements:** PHP 8.3+, Laravel 12 or 13, PHPUnit/Pest in the host app. Keep this in `require-dev`. Set `APP_ENV=testing` in `phpunit.xml` and use a disposable test database. No migrations, middleware, queues, services, or network access are installed by FailureLab.
 
@@ -154,7 +154,7 @@ For hands-on examples, see [Five-minute quick start](docs/QUICKSTART.md), [Recov
 
 ## Release and distribution
 
-The canonical source and CI live in this repository. **v1.1.0** is published on [GitHub Releases](https://github.com/mykholy/laravel-failurelab/releases/tag/v1.1.0) and [Packagist](https://packagist.org/packages/mykholy/laravel-failurelab), with exact-source verification and clean registry-based consumer installation. For future versions, see the [maintainer release procedure](docs/RELEASE.md#future-stable-release-process).
+The canonical source and CI live in this repository. **v1.2.0** is published on [GitHub Releases](https://github.com/mykholy/laravel-failurelab/releases/tag/v1.2.0) and [Packagist](https://packagist.org/packages/mykholy/laravel-failurelab), with exact-source verification and clean registry-based consumer installation. The [v1.2.0 public release workflow](https://github.com/mykholy/laravel-failurelab/actions/runs/38939862511) passed after clean Laravel 12/13 installs. For future versions, see the [maintainer release procedure](docs/RELEASE.md#future-stable-release-process).
 
 ### New: the handler committed, but the acknowledgement was lost
 
@@ -210,12 +210,12 @@ Standalone GitHub Actions validates PHP 8.3–8.5, Laravel 12/13, PHPStan, Pint,
 | `->loseAcknowledgementOn(int)` | Model acknowledgement lost **after successful handler** (1.1.0+) |
 | `->assertAcknowledgementPlanSatisfied()` | Verify configured loss occurred after a completed callback (1.1.0+) |
 | `->assertAcknowledgedAfterLoss()` | Require a later successful acknowledged delivery (1.1.0+) |
-| `new FakeCaptureGateway` | Test-only provider with stable idempotency keys and unknown responses (unreleased, see docs) |
+| `new FakeCaptureGateway` | Test-only provider with stable idempotency keys and unknown responses (v1.2.0+) |
 
 A `FailureLabManager` is available from Laravel's service container for dependency-injected tests; the static entry point needs no bootstrapping.
 
 ## Project status
 
-**v1.1.0 — latest tagged stable on GitHub and Packagist** (the new fake fixture is unreleased until a separately verified minor tag), with matching immutable source and verified independent Composer installs on Laravel 12 and 13. FailureLab remains a test-only library: it does not simulate real process termination, concurrent workers, or distributed exactly-once delivery. [Release verification](docs/RELEASE.md) covers the exact evidence and limits.
+**v1.2.0 — latest tagged stable on GitHub and Packagist**, with matching immutable source and verified independent Composer installs on Laravel 12 and 13. FailureLab remains a test-only library: it does not simulate real process termination, concurrent workers, or distributed exactly-once delivery. [Release verification](docs/RELEASE.md) covers the exact evidence and limits.
 
 MIT licensed. Contributions welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Maintained by [@mykholy](https://github.com/mykholy).
