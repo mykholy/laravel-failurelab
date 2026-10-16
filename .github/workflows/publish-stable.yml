@@ -1,0 +1,126 @@
+name: Publish verified FailureLab stable
+
+on:
+  workflow_run:
+    workflows: ["FailureLab standalone CI"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  beta-consumers:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == 'mykholy/laravel-failurelab'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        laravel: ['12', '13']
+    steps:
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: mbstring, dom, pdo_sqlite, sqlite3
+          tools: composer:v2
+      - name: Install the exact published beta, never dev-main or a path repository
+        run: |
+          composer create-project laravel/laravel "$RUNNER_TEMP/stable-candidate" "^${{ matrix.laravel }}" --no-interaction --prefer-dist --no-progress
+          cd "$RUNNER_TEMP/stable-candidate"
+          composer config repositories.failurelab '{"type":"vcs","url":"https://github.com/mykholy/laravel-failurelab.git"}'
+          composer require --dev 'mykholy/laravel-failurelab:v0.1.0-beta.1' --no-interaction --prefer-dist --no-progress
+          composer show mykholy/laravel-failurelab
+      - name: Verify named interruption and recovered result in the real Laravel container
+        run: |
+          cd "$RUNNER_TEMP/stable-candidate"
+          APP_ENV=testing php -r '
+          require "vendor/autoload.php";
+          $app = require "bootstrap/app.php";
+          $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+          $manager = $app->make(\Mykholy\FailureLab\FailureLabManager::class);
+          $report = $manager->scenario("beta candidate verification")
+              ->interruptOnceAt("point")->attempts(2)
+              ->run(function ($point, int $attempt): int {
+                  $point->hit("point"); return $attempt;
+              });
+          $report->assertFaultPlanSatisfied()->assertCompleted();
+          if ($report->value() !== 2) { throw new \RuntimeException("Invalid recovery"); }
+          $manager->replay("duplicate")->times(2)->run(fn () => true)->assertAllCompleted();
+          '
+
+  stable:
+    needs: [beta-consumers]
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == 'mykholy/laravel-failurelab'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: mbstring, dom, pdo_sqlite, sqlite3
+          tools: composer:v2
+      - name: Verify source and published candidate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          composer validate --strict --no-check-publish
+          gh release view v0.1.0-beta.1 --json tagName,isPrerelease
+          test -f LICENSE && test -f SECURITY.md && test -f CHANGELOG.md
+          php tests/smoke.php
+          APP_ENV=testing php examples/payment-demo.php
+      - name: Create immutable stable GitHub release and verify tagged Composer installs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERIFIED_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          tag='v1.0.0'
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}" >/dev/null 2>&1; then
+            echo "Stable tag already exists: refusing to overwrite or silently move it."
+            exit 0
+          fi
+          gh release create "$tag" --target "$VERIFIED_SHA" --title "FailureLab v1.0.0" --notes "First stable GitHub release of the test-only Laravel FailureLab API. Deterministic named in-process fault injection, bounded sequential delivery replay, and explicit recovery assertions. Verified on PHP 8.3–8.5, Laravel 12/13, MySQL, PostgreSQL, PHPStan, Pint, and Composer audit. Does not simulate SIGKILL, concurrent workers, real provider acceptance or exactly-once delivery. Install only as require-dev."
+          cleanup() {
+            echo "Post-release tag verification failed; removing newly created GitHub release and tag."
+            gh release delete "$tag" --yes --cleanup-tag || true
+          }
+          trap cleanup ERR
+          for laravel in 12 13; do
+            dir="$RUNNER_TEMP/stable-host-$laravel"
+            composer create-project laravel/laravel "$dir" "^$laravel" --no-interaction --prefer-dist --no-progress
+            (
+              cd "$dir"
+              composer config repositories.failurelab '{"type":"vcs","url":"https://github.com/mykholy/laravel-failurelab.git"}'
+              composer require --dev 'mykholy/laravel-failurelab:v1.0.0' --no-interaction --prefer-dist --no-progress
+              APP_ENV=testing php -r '
+              require "vendor/autoload.php";
+              $app = require "bootstrap/app.php";
+              $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+              $manager = $app->make(\Mykholy\FailureLab\FailureLabManager::class);
+              $report = $manager->scenario("stable package install")
+                  ->interruptOnceAt("checkpoint")->attempts(2)
+                  ->run(function ($point, int $n): int { $point->hit("checkpoint"); return $n; });
+              $report->assertFaultPlanSatisfied()->assertCompleted();
+              if ($report->value() !== 2) { throw new \RuntimeException("Unexpected value"); }
+              '
+            )
+          done
+          trap - ERR
+          gh release view "$tag" --json tagName,isPrerelease,url
