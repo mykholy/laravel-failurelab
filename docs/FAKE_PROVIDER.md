@@ -1,6 +1,6 @@
 # Test-only fake provider: idempotency and unknown outcomes
 
-**Introduced in a future additive release (not in v1.1.0).**
+**Added in v1.2.0** (check that the tagged release is published before installing; not available in v1.1.0).
 `Mykholy\FailureLab\Testing\FakeCaptureGateway` is a **purely in-memory fake**.
 It makes **zero HTTP requests** and stores no real payments. Calls sharing an
 idempotency key return the same deterministic synthetic capture reference.

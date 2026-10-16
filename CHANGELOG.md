@@ -2,7 +2,9 @@
 
 All notable user-facing changes are documented here. Published tags are immutable.
 
-## Unreleased — next minor release (not yet on Packagist)
+## [1.2.0] - 2026-10-16
+
+*Planned candidate until GitHub Release and Packagist verification have both passed.*
 
 ### Developer testing capabilities
 
