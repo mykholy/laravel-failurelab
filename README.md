@@ -37,19 +37,16 @@ It does **not** replace Race Lab, Horizon, Pulse, FlowGuard, Testbench, real sub
 
 ## Installation
 
-Before verified Packagist publication, install from this Git repository in a disposable Laravel 12/13 test application:
+**Verified on Packagist:** clean Laravel 12 and 13 applications installed `v1.0.0`
+without any custom Composer VCS/path repository:
 
 ```bash
-composer config repositories.failurelab '{"type":"vcs","url":"https://github.com/mykholy/laravel-failurelab.git"}'
 composer require --dev mykholy/laravel-failurelab:^1.0
 ```
 
-Once the package is actually indexed by Packagist, remove the custom VCS repository configuration and use standard installation:
-
-```bash
-composer config --unset repositories.failurelab
-composer require --dev mykholy/laravel-failurelab:^1.0
-```
+The [Packagist-only consumer matrix](https://github.com/mykholy/laravel-failurelab/actions/runs/38892927867)
+checks installation and auto-discovery independently. Version 1.1's
+acknowledgement-loss API is currently in development and **not part of 1.0.0**.
 
 **Requirements:** PHP 8.3+, Laravel 12 or 13, PHPUnit/Pest in the host app. Keep this in `require-dev`. Set `APP_ENV=testing` in `phpunit.xml` and use a disposable test database. No migrations, middleware, queues, services, or network access are installed by FailureLab.
 
@@ -151,7 +148,7 @@ For edge cases, see [Limitations & threat model](docs/SAFETY.md), [Design decisi
 
 ## Release and distribution
 
-The canonical source and CI are maintained in this repository. Check [GitHub Releases](https://github.com/mykholy/laravel-failurelab/releases) for actual tags and [Packagist](https://packagist.org/packages/mykholy/laravel-failurelab) for package discovery. Do not assume a version has been published merely because its Composer package name is declared.
+The canonical source and CI live in this repository. Version 1.0.0 is available through [GitHub Releases](https://github.com/mykholy/laravel-failurelab/releases) and installable via [Packagist](https://packagist.org/packages/mykholy/laravel-failurelab). CI also verifies clean registry-based consumer installation.
 
 ### New: the handler committed, but the acknowledgement was lost
 

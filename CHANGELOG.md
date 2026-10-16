@@ -29,4 +29,4 @@ All notable changes will be documented here after the first public tag.
 - A swallowed injected failure cannot satisfy the fault-plan assertion.
 - Reject ASCII control bytes, invalid UTF-8 and bidirectional formatting controls in scenario names.
 
-**Release:** [v1.0.0 on GitHub](https://github.com/mykholy/laravel-failurelab/releases/tag/v1.0.0). Stable tag installs were independently checked in Laravel 12 and 13 from Composer Git VCS. Packagist registration and registry-only installation have not yet been verified.
+**Release:** [v1.0.0 on GitHub](https://github.com/mykholy/laravel-failurelab/releases/tag/v1.0.0). Stable tag installs were independently checked in Laravel 12 and 13 from Composer Git VCS. Packagist-only Composer installation was verified in clean Laravel 12 and 13 projects: [CI evidence](https://github.com/mykholy/laravel-failurelab/actions/runs/38892927867).

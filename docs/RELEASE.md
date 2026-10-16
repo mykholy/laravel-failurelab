@@ -1,7 +1,7 @@
 # FailureLab release verification
 
 **GitHub status: v1.0.0 stable release published and tested.**
-**Packagist status: registration and registry-only Composer install not yet verified.**
+**Packagist status: registered and v1.0.0 installed in fresh Laravel 12/13 consumers with no Composer repository overrides.**
 The stable tag is immutable: `252e7256bb488b1cefffe6d6b9842759c9227e22`.
 
 ## Passed release gates
@@ -22,13 +22,14 @@ The stable tag is immutable: `252e7256bb488b1cefffe6d6b9842759c9227e22`.
 
 Evidence: [standalone CI](https://github.com/mykholy/laravel-failurelab/actions/runs/38891346888),
 [pre-release tag consumers](https://github.com/mykholy/laravel-failurelab/actions/runs/38891170992),
-[stable GitHub publish + pinned stable installs](https://github.com/mykholy/laravel-failurelab/actions/runs/38891495380).
+[stable GitHub publish + pinned stable installs](https://github.com/mykholy/laravel-failurelab/actions/runs/38891495380),
+[Packagist registry-only consumers](https://github.com/mykholy/laravel-failurelab/actions/runs/38892927867).
 
-## Outstanding distribution and adoption work
+## Remaining adoption and maintenance work
 
-- [ ] Submit the GitHub repository at https://packagist.org/packages/submit
-- [ ] Verify Packagist webhooks/updates and index the `v1.0.0` version
-- [ ] In a fresh independent Laravel app **without** a custom Composer VCS/path repository, run `composer require --dev mykholy/laravel-failurelab:^1.0`
+- [x] Packagist registration completed; v1.0.0 resolves via Composer registry without VCS/path overrides
+- [x] In clean Laravel 12 and 13 apps installed `composer require --dev mykholy/laravel-failurelab:^1.0` and verified runtime auto-discovery
+- [ ] Verify Packagist automatic GitHub tag synchronization on the **next** versioned release
 - [ ] Collect public developer adoption feedback and follow up on edge cases
 - [ ] Maintain versioned release notes for later patches without moving `v1.0.0`
 
