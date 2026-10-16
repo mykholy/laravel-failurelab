@@ -37,15 +37,16 @@ It does **not** replace Race Lab, Horizon, Pulse, FlowGuard, Testbench, real sub
 
 ## Installation
 
-**Verified on Packagist:** clean Laravel 12 and 13 applications installed `v1.0.0`
+**Verified on Packagist:** clean Laravel 12 and 13 applications installed `v1.0.0` and `v1.1.0`
 without any custom Composer VCS/path repository:
 
 ```bash
 composer require --dev mykholy/laravel-failurelab:^1.0
 ```
 
-The [Packagist-only consumer matrix](https://github.com/mykholy/laravel-failurelab/actions/runs/38892927867)
-checks installation and auto-discovery independently. Version 1.1's acknowledgement-loss API is available in the published **v1.1.0** GitHub release; it is not part of v1.0.0.
+The [Packagist-only stable consumer matrix](https://github.com/mykholy/laravel-failurelab/actions/runs/38892927867)
+and [pinned v1.1.0 registry matrix](https://github.com/mykholy/laravel-failurelab/actions/runs/38894111452)
+check installation and auto-discovery independently. Version 1.1's acknowledgement-loss API is available in the published **v1.1.0** GitHub release; it is not part of v1.0.0.
 
 **Requirements:** PHP 8.3+, Laravel 12 or 13, PHPUnit/Pest in the host app. Keep this in `require-dev`. Set `APP_ENV=testing` in `phpunit.xml` and use a disposable test database. No migrations, middleware, queues, services, or network access are installed by FailureLab.
 
