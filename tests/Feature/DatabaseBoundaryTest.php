@@ -109,7 +109,6 @@ final class DatabaseBoundaryTest extends TestCase
         self::assertSame(1, DB::table('failurelab_effects')->count());
     }
 
-
     public function test_lost_acknowledgement_after_commit_keeps_a_single_ledger_effect(): void
     {
         $report = FailureLab::replay('committed webhook then acknowledgement lost')

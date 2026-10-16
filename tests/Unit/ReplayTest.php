@@ -124,7 +124,6 @@ final class ReplayTest extends TestCase
         FailureLab::replay("report\u{202E}spoof");
     }
 
-
     public function test_acknowledgement_loss_records_completed_handler_then_later_acknowledgement(): void
     {
         $handlerCalls = 0;
